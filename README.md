@@ -2,7 +2,7 @@
 
 > An end-to-end, AI-powered customer support triage pipeline built entirely in [n8n](https://n8n.io). Incoming tickets are validated, deduplicated, classified by a local LLM, priority-scored, SLA-tracked, and reported on — all without writing a standalone backend.
 
-![Support Intake API Workflow](Screenshots/support-intake-api.png)
+![Support Intake API Workflow](screenshots/support-intake-api.png)
 
 ---
 
@@ -38,7 +38,7 @@ This project implements a **production-style support operations pipeline** using
 - **Generate daily reports** summarizing operational health
 - **Monitor errors** across the entire workflow system
 
-All data is persisted in **n8n DataTables** — no external database required.
+All data is persisted in **n8n Data Tables** — no external database required.
 
 ---
 
@@ -62,7 +62,7 @@ All data is persisted in **n8n DataTables** — no external database required.
     │         │            └──────┬───────┘               │            │
     │         ▼                   ▼                       ▼            │
     │  ┌─────────────────────────────────────────────────────────────┐ │
-    │  │                   n8n DataTables                            │ │
+    │  │                   n8n Data Tables                           │ │
     │  │  ┌──────────────┐ ┌──────────────┐ ┌─────────────────────┐ │ │
     │  │  │support_tickets│ │support_events│ │   ops_reports       │ │ │
     │  │  └──────────────┘ └──────────────┘ └─────────────────────┘ │ │
@@ -91,7 +91,7 @@ All data is persisted in **n8n DataTables** — no external database required.
 
 The core workflow. Accepts support tickets via a webhook, validates, deduplicates, classifies with AI, scores priority, and persists everything with a full audit trail.
 
-![Support Intake API](Screenshots/support-intake-api.png)
+![Support Intake API](screenshots/support-intake-api.png)
 
 #### Pipeline Steps
 
@@ -109,7 +109,7 @@ The core workflow. Accepts support tickets via a webhook, validates, deduplicate
 | 8 | **Score and Route** | Computes a composite `priority_score` and assigns a `queue` and `sla_due` deadline |
 | 9 | **Insert Ticket** | Persists the fully enriched ticket to `support_tickets` |
 | 10 | **Insert Ticket Created Event** | Logs a `created` event to `support_events` |
-| 11 | **Needs Immediate Escalation?** | If `priority_score ≥ 60`, logs a `critical_escalation` event |
+| 11 | **Needs Immediate Escalation?** | If `priority_score ≥ 80`, logs a `critical_escalation` event |
 | 12 | **Respond Accepted** | Returns the ticket summary, queue assignment, and AI draft reply to the caller |
 
 ---
@@ -122,7 +122,7 @@ The core workflow. Accepts support tickets via a webhook, validates, deduplicate
 
 Automatically detects tickets that have breached their SLA deadline and escalates them.
 
-![SLA Escalation Checker](Screenshots/sla-escalation-checker.png)
+![SLA Escalation Checker](screenshots/sla-escalation-checker.png)
 
 #### Pipeline Steps
 
@@ -144,7 +144,7 @@ Automatically detects tickets that have breached their SLA deadline and escalate
 
 Generates a daily executive summary of support operations using AI.
 
-![Daily Ops Digest](Screenshots/daily-ops-digest.png)
+![Daily Ops Digest](screenshots/daily-ops-digest.png)
 
 #### Pipeline Steps
 
@@ -166,7 +166,7 @@ Generates a daily executive summary of support operations using AI.
 
 A centralized error handler wired to all other workflows. Catches any execution failure and persists a structured error record.
 
-![Error Monitor](Screenshots/error-monitor.png)
+![Error Monitor](screenshots/error-monitor.png)
 
 #### Pipeline Steps
 
@@ -180,7 +180,7 @@ A centralized error handler wired to all other workflows. Catches any execution 
 
 ## Data Model
 
-All data is stored in **n8n DataTables**. Four tables form the system's data layer:
+All data is stored in **n8n Data Tables**. Four tables form the system's data layer:
 
 ### `support_tickets`
 
@@ -217,7 +217,7 @@ The primary ticket store. Each row represents one support request.
 | `metadata_browser` | string | Client browser info |
 | `metadata_account_id` | string | Customer account ID |
 
-![Support Tickets Table](Screenshots/support-tickets-table.png)
+![Support Tickets Table](screenshots/support-tickets-table.png)
 
 ### `support_events`
 
@@ -231,7 +231,7 @@ Immutable audit log. Every state change is recorded here.
 | `event_note` | string | Human-readable description |
 | `event_at_iso` | string | Timestamp of the event |
 
-![Support Events Table](Screenshots/support-events-table.png)
+![Support Events Table](screenshots/support-events-table.png)
 
 ### `ops_reports`
 
@@ -422,12 +422,11 @@ Content-Type: application/json
 ```json
 {
   "status": "duplicate",
-  "ticket_id": "tkt_1777967795559",
   "message": "A matching ticket already exists"
 }
 ```
 
-#### Validation Error Response (200)
+#### Validation Error Response (400)
 
 ```json
 {
@@ -476,11 +475,13 @@ docker run -it --rm -p 5678:5678 n8nio/n8n
 1. Open n8n at `http://localhost:5678`
 2. Go to **Settings → Credentials**
 3. Create a new **Ollama API** credential
-4. Set the base URL to `http://localhost:11434`
+4. Set the base URL:
+   - If n8n runs **directly on your machine**: `http://localhost:11434`
+   - If n8n runs **inside Docker**: `http://host.docker.internal:11434`
 
-### 4. Create DataTables
+### 4. Create Data Tables
 
-Create the following DataTables in your n8n instance:
+Create the following Data Tables in your n8n instance:
 
 | Table Name | Description |
 |------------|-------------|
@@ -497,12 +498,12 @@ Create the following DataTables in your n8n instance:
 
 1. Open your n8n instance
 2. Go to **Workflows → Import from File**
-3. Import each JSON file from the `Workflows/` directory:
+3. Import each JSON file from the `workflows/` directory:
    - `Support Intake API.json`
    - `SLA Escalation Checker.json`
    - `Daily Ops Digest.json`
    - `Error Monitor.json`
-4. Update the **DataTable IDs** in each workflow to match your newly created tables
+4. Update the **Data Table IDs** in each workflow to match your newly created tables
 5. Update the **Ollama credential** reference in the AI nodes
 6. Activate the workflows
 
@@ -551,7 +552,7 @@ Run the first cURL command twice — the second call should return `"status": "d
 |-----------|-----------|
 | **Workflow Engine** | n8n (self-hosted) |
 | **AI / LLM** | Ollama + Qwen 2.5 (0.5B) — runs 100% locally |
-| **Data Layer** | n8n DataTables (built-in, no external DB) |
+| **Data Layer** | n8n Data Tables (built-in, no external DB) |
 | **API** | n8n Webhook node (REST) |
 | **Scheduling** | n8n Schedule Trigger |
 | **Error Handling** | n8n Error Trigger + centralized logging |
