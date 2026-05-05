@@ -2,7 +2,7 @@
 
 > An end-to-end, AI-powered customer support triage pipeline built entirely in [n8n](https://n8n.io). Incoming tickets are validated, deduplicated, classified by a local LLM, priority-scored, SLA-tracked, and reported on — all without writing a standalone backend.
 
-![Support Intake API Workflow](screenshots/support-intake-api.png)
+![Support Intake API Workflow](Screenshots/support-intake-api.png)
 
 ---
 
@@ -91,7 +91,7 @@ All data is persisted in **n8n Data Tables** — no external database required.
 
 The core workflow. Accepts support tickets via a webhook, validates, deduplicates, classifies with AI, scores priority, and persists everything with a full audit trail.
 
-![Support Intake API](screenshots/support-intake-api.png)
+![Support Intake API](Screenshots/support-intake-api.png)
 
 #### Pipeline Steps
 
@@ -122,7 +122,7 @@ The core workflow. Accepts support tickets via a webhook, validates, deduplicate
 
 Automatically detects tickets that have breached their SLA deadline and escalates them.
 
-![SLA Escalation Checker](screenshots/sla-escalation-checker.png)
+![SLA Escalation Checker](Screenshots/sla-escalation-checker.png)
 
 #### Pipeline Steps
 
@@ -144,7 +144,7 @@ Automatically detects tickets that have breached their SLA deadline and escalate
 
 Generates a daily executive summary of support operations using AI.
 
-![Daily Ops Digest](screenshots/daily-ops-digest.png)
+![Daily Ops Digest](Screenshots/daily-ops-digest.png)
 
 #### Pipeline Steps
 
@@ -166,7 +166,7 @@ Generates a daily executive summary of support operations using AI.
 
 A centralized error handler wired to all other workflows. Catches any execution failure and persists a structured error record.
 
-![Error Monitor](screenshots/error-monitor.png)
+![Error Monitor](Screenshots/error-monitor.png)
 
 #### Pipeline Steps
 
@@ -217,7 +217,7 @@ The primary ticket store. Each row represents one support request.
 | `metadata_browser` | string | Client browser info |
 | `metadata_account_id` | string | Customer account ID |
 
-![Support Tickets Table](screenshots/support-tickets-table.png)
+![Support Tickets Table](Screenshots/support-tickets-table.png)
 
 ### `support_events`
 
@@ -231,7 +231,7 @@ Immutable audit log. Every state change is recorded here.
 | `event_note` | string | Human-readable description |
 | `event_at_iso` | string | Timestamp of the event |
 
-![Support Events Table](screenshots/support-events-table.png)
+![Support Events Table](Screenshots/support-events-table.png)
 
 ### `ops_reports`
 
@@ -498,7 +498,7 @@ Create the following Data Tables in your n8n instance:
 
 1. Open your n8n instance
 2. Go to **Workflows → Import from File**
-3. Import each JSON file from the `workflows/` directory:
+3. Import each JSON file from the `Workflows/` directory:
    - `Support Intake API.json`
    - `SLA Escalation Checker.json`
    - `Daily Ops Digest.json`
