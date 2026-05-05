@@ -559,12 +559,3 @@ Run the first cURL command twice — the second call should return `"status": "d
 
 ---
 
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
----
-
-<p align="center">
-  Built with ❤️ using <a href="https://n8n.io">n8n</a> and <a href="https://ollama.com">Ollama</a>
-</p>
