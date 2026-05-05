@@ -1,0 +1,188 @@
+{
+  "name": "Error Monitor",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3b313f0c-3dc7-427d-a2c4-d3d746fd89e5",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "988d1f56-a3a9-4718-9c65-dde5e1aff8a6",
+              "name": "error_id",
+              "value": "=err_{{$now}}",
+              "type": "string"
+            },
+            {
+              "id": "dee49449-2969-421a-98f5-a08b795b16b8",
+              "name": "workflow_name",
+              "value": "={{ $json.workflow.name }}",
+              "type": "string"
+            },
+            {
+              "id": "54a2c2cc-e03f-4e19-925d-8c0faf74fbec",
+              "name": "failed_node",
+              "value": "=error_message = {{ $json.execution.error.message ?? $json.trigger?.error?.message ?? 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "98387438-38cf-4e17-95c6-91ca6a1ad62a",
+              "name": "execution_url",
+              "value": "={{ $json.execution.url ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "0988e66c-7c92-49dd-af60-f97708d63b42",
+              "name": "created_at_iso",
+              "value": "={{$now}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6d063b6f-8dfc-44da-bc65-144cffe3c5be",
+      "name": "Format Error Record"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "YAmZUkCmWCPZUEgl",
+          "mode": "list",
+          "cachedResultName": "workflow_errors",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/YAmZUkCmWCPZUEgl"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "error_id",
+              "displayName": "error_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "failed_node",
+              "displayName": "failed_node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "execution_url",
+              "displayName": "execution_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at_iso",
+              "displayName": "created_at_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d7357e87-a314-48ec-9f05-828b1ab1266c",
+      "name": "Insert Workflow Error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Record": {
+      "main": [
+        [
+          {
+            "node": "Insert Workflow Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7c868d76-34bd-4933-b718-b5d9364e45fe",
+  "meta": {
+    "instanceId": "56f66f4f9ba2983d4c9eac77e310c55b672ca6bed0b2093a042515039e543daf"
+  },
+  "id": "2YGvUkktjREfHLci",
+  "tags": []
+}

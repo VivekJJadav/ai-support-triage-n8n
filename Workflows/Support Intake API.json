@@ -1,0 +1,1008 @@
+{
+  "name": "Support Intake API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support/intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7fa16376-73d3-4d8e-8926-ab5d74b69edb",
+      "name": "Webhook",
+      "webhookId": "530dd84b-51aa-4bbb-ae0d-b8c7c0262156"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c5e39e40-6e9f-4dfb-8375-88a8e3360554",
+              "name": "source",
+              "value": "={{$json.body.source ?? 'unknown'}}",
+              "type": "string"
+            },
+            {
+              "id": "0f81620f-1790-461c-907c-9ebd7ff8e9d5",
+              "name": "customer_name",
+              "value": "={{$json.body.customer_name}}",
+              "type": "string"
+            },
+            {
+              "id": "8413917e-bf82-47ab-aaa2-810890bfc715",
+              "name": "customer_tier",
+              "value": "={{$json.body.customer_tier ?? 'standard'}}",
+              "type": "string"
+            },
+            {
+              "id": "85a71e2c-3710-4ef8-8a58-0ac683df6b62",
+              "name": "customer_email",
+              "value": "={{ $json.body.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "90a71717-8018-42b0-b32d-54ebcf9026d6",
+              "name": "subject",
+              "value": "={{$json.body.subject}}",
+              "type": "string"
+            },
+            {
+              "id": "27588725-b0b5-46d9-98ad-2ce6ca9aba05",
+              "name": "body",
+              "value": "={{$json.body.body}}",
+              "type": "string"
+            },
+            {
+              "id": "c9872087-51c5-499a-96b5-3c1ddee95c10",
+              "name": "metadata_browser",
+              "value": "={{$json.body.metadata?.browser ?? ''}}",
+              "type": "string"
+            },
+            {
+              "id": "642ffaf4-7779-4cfc-8461-f2e36dc09eeb",
+              "name": "metadata_account_id",
+              "value": "={{$json.body.metadata?.account_id ?? ''}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4730bdbc-064b-4159-be46-489b7c79f9b9",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4accf499-763a-4727-ab33-cb43bc7912b7",
+              "leftValue": "={{ $json.customer_email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "7eda49b5-bfec-4dd9-a51c-0e23bfdc81ef",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "991f7d4f-03d6-46e7-8686-f9f9af7256fa",
+              "leftValue": "={{ $json.body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "cc3d953f-5251-4a60-9651-b49dbcb2d23c",
+      "name": "Has Required Fields?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"error\",\n  \"message\": \"Missing required fields: customer_email, subject, or body\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        736,
+        -352
+      ],
+      "id": "410fe230-4e01-4f1d-8797-0d4030d9861b",
+      "name": "Respond Missing Fields"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const email = String($json.customer_email || '').trim().toLowerCase();\nconst subject = String($json.subject || '').trim();\nconst body = String($json.body || '').trim();\nconst source = String($json.source || 'unknown').trim();\n\nconst submittedAt = new Date();\nconst submittedAtIso = submittedAt.toISOString();\nconst submittedAtMs = submittedAt.getTime();\n\nconst normalizedSubject = subject\n  .toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-+|-+$/g, '');\n\nconst duplicateKey = `${email}|${normalizedSubject}`;\nconst cleanText = `${subject}\\n${body}`.replace(/\\s+/g, ' ').trim();\n\nconst ticketId = `tkt_${submittedAtMs}`;\n\nreturn {\n  json: {\n    ...$json,\n    ticket_id: ticketId,\n    submitted_at_iso: submittedAtIso,\n    submitted_at_epoch_ms: submittedAtMs,\n    clean_text: cleanText,\n    duplicate_key: duplicateKey,\n    status: 'new',\n    escalated: false\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "c0356515-c04d-4f07-8e56-375251d4111e",
+      "name": "Derive IDs and SLA Seed"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "rDkm1dvmdMRfDkRm",
+          "mode": "list",
+          "cachedResultName": "support_events",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/rDkm1dvmdMRfDkRm"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "=evt_created_{{$json.ticket_id}}",
+            "ticket_id": "={{$json.ticket_id}}",
+            "event_type": "created",
+            "event_note": "Ticket persisted and queued",
+            "event_at_iso": "={{$json.submitted_at_iso}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_note",
+              "displayName": "event_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_at_iso",
+              "displayName": "event_at_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1872,
+        0
+      ],
+      "id": "4e3708f0-d173-46b4-9090-73042dfcdec2",
+      "name": "Insert Ticket Created Event"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kmaZ59tIZwlUHHJC",
+          "mode": "list",
+          "cachedResultName": "support_tickets",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/kmaZ59tIZwlUHHJC"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "duplicate_key",
+              "keyValue": "={{ $json.duplicate_key }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        240
+      ],
+      "id": "3e965ff2-104a-4203-8e54-2339cac44adb",
+      "name": "Duplicate Does Not Exist?"
+    },
+    {
+      "parameters": {
+        "operation": "rowExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kmaZ59tIZwlUHHJC",
+          "mode": "list",
+          "cachedResultName": "support_tickets",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/kmaZ59tIZwlUHHJC"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "duplicate_key",
+              "keyValue": "={{ $json.duplicate_key }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "52cfcee2-3c2f-4c7e-bca8-4cdaa9197473",
+      "name": "Duplicate Exists?"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "rDkm1dvmdMRfDkRm",
+          "mode": "list",
+          "cachedResultName": "support_events",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/rDkm1dvmdMRfDkRm"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "=evt_dup_{{$json.ticket_id}}",
+            "ticket_id": "={{$json.ticket_id}}",
+            "event_type": "duplicate_submission",
+            "event_note": "Duplicate suppressed before insert",
+            "event_at_iso": "={{$json.submitted_at_iso}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_note",
+              "displayName": "event_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_at_iso",
+              "displayName": "event_at_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "4e89ae92-18d8-4635-840f-0e8f8c79e16c",
+      "name": "Insert Duplicate Event"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"duplicate\",\n  \"ticket_id\": \"={{$json.ticket_id}}\",\n  \"message\": \"A matching ticket already exists\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "fa024603-3f47-4cc2-afb3-b92b1a4ed7aa",
+      "name": "Respond Duplicate"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a support operations triage assistant.\n\nAnalyze the ticket below and return STRICT JSON only.\nDo not wrap the JSON in markdown.\nDo not include commentary.\n\nChoose exactly one value for each enum field.\n\nAllowed category values:\nbilling, bug, feature_request, account_access, integration, how_to, other\n\nAllowed urgency_label values:\nlow, medium, high, critical\n\nAllowed sentiment_label values:\nnegative, neutral, positive\n\nTicket:\nCustomer tier: {{$json.customer_tier}}\nCustomer email: {{$json.customer_email}}\nSource: {{$json.source}}\nSubject: {{$json.subject}}\nBody: {{$json.body}}\n\nReturn this exact JSON shape:\n{\n  \"category\": \"account_access\",\n  \"product_area\": \"\",\n  \"urgency_label\": \"medium\",\n  \"sentiment_label\": \"negative\",\n  \"language\": \"English\",\n  \"ai_summary\": \"\",\n  \"recommended_action\": \"\",\n  \"ai_reply_draft\": \"\",\n  \"confidence\": 0.0\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        976,
+        256
+      ],
+      "id": "09c62fb8-af88-4a86-bf56-3027d6d575b0",
+      "name": "AI Triage"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:0.5b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        448
+      ],
+      "id": "cbd0bec6-4f74-401f-afe9-f50d8a0952c7",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "DAhmXnKKg9XAA3Fe",
+          "name": "Ollama account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $json.output ?? $json.text ?? $json.response ?? '';\n\nlet parsed;\n\ntry {\n  parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (error) {\n  const match = String(raw).match(/\\{[\\s\\S]*\\}/);\n\n  if (!match) {\n    throw new Error(`AI output was not valid JSON. Raw output: ${String(raw).slice(0, 500)}`);\n  }\n\n  parsed = JSON.parse(match[0]);\n}\n\nreturn {\n  json: parsed\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        256
+      ],
+      "id": "7c67e968-7542-4834-8e2f-05782d4794b8",
+      "name": "Parse AI JSON"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const original = $('Derive IDs and SLA Seed').first().json;\nconst ai = $json;\n\nlet score = 0;\n\nif (ai.urgency_label === 'critical') score += 50;\nelse if (ai.urgency_label === 'high') score += 35;\nelse if (ai.urgency_label === 'medium') score += 20;\nelse score += 10;\n\nif (ai.sentiment_label === 'negative') score += 15;\n\nconst text = `${original.subject} ${original.body}`.toLowerCase();\n\nif (/(outage|down|cannot login|cannot log in|billing broken|security|data loss|payment failed)/.test(text)) {\n  score += 35;\n}\n\nif (/(enterprise|annual contract|founder|ceo|vp)/.test(text)) {\n  score += 10;\n}\n\nlet assignedQueue = 'general';\n\nif (ai.category === 'billing') assignedQueue = 'billing';\nif (ai.category === 'bug' || ai.category === 'integration') assignedQueue = 'technical';\nif (ai.category === 'account_access') assignedQueue = 'accounts';\nif (score >= 80) assignedQueue = 'priority';\n\nconst slaHours =\n  score >= 80 ? 1 :\n  score >= 55 ? 4 :\n  score >= 30 ? 24 : 72;\n\nconst slaDueMs = original.submitted_at_epoch_ms + slaHours * 60 * 60 * 1000;\n\nreturn {\n  json: {\n    ...original,\n    ...ai,\n    priority_score: score,\n    assigned_queue: assignedQueue,\n    status: score >= 80 ? 'escalated' : 'queued',\n    escalated: score >= 80,\n    sla_due_iso: new Date(slaDueMs).toISOString(),\n    sla_due_epoch_ms: slaDueMs\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        256
+      ],
+      "id": "82199c0f-717f-4778-a4ce-ddebea723ff1",
+      "name": "Score and Route"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "122aed94-cb4a-4a46-a93c-e2cf35c764aa",
+              "leftValue": "={{ $('Score and Route').first().json.priority_score }}\n",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2080,
+        0
+      ],
+      "id": "77f809aa-3f67-4a08-8c3d-6ebb3375f8d1",
+      "name": "Needs Immediate Escalation?"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "rDkm1dvmdMRfDkRm",
+          "mode": "list",
+          "cachedResultName": "support_events",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/rDkm1dvmdMRfDkRm"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "event_id": "=evt_critical_{{$json.ticket_id}}",
+            "ticket_id": "={{$json.ticket_id}}",
+            "event_type": "critical_escalation",
+            "event_note": "Critical ticket routed for immediate attention",
+            "event_at_iso": "={{$json.submitted_at_iso}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_note",
+              "displayName": "event_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "event_at_iso",
+              "displayName": "event_at_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2272,
+        -128
+      ],
+      "id": "ba97a44d-3b59-43da-8387-7434264dd422",
+      "name": "Insert Critical Escalation Event"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "kmaZ59tIZwlUHHJC",
+          "mode": "list",
+          "cachedResultName": "support_tickets",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/kmaZ59tIZwlUHHJC"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "escalated": false
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ticket_id",
+              "displayName": "ticket_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "customer_tier",
+              "displayName": "customer_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "clean_text",
+              "displayName": "clean_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "duplicate_key",
+              "displayName": "duplicate_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "escalated",
+              "displayName": "escalated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "submitted_at_iso",
+              "displayName": "submitted_at_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "submitted_at_epoch_ms",
+              "displayName": "submitted_at_epoch_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "metadata_browser",
+              "displayName": "metadata_browser",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "metadata_account_id",
+              "displayName": "metadata_account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "991e4d75-88c4-4be9-83c0-11abc60034a0",
+      "name": "Insert Ticket"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=={{ JSON.stringify({\n  status: \"accepted\",\n  ticket_id: $(\"Score and Route\").first().json.ticket_id,\n  queue: $(\"Score and Route\").first().json.assigned_queue,\n  priority_score: $(\"Score and Route\").first().json.priority_score,\n  urgency_label: $(\"Score and Route\").first().json.urgency_label,\n  summary: $(\"Score and Route\").first().json.ai_summary,\n  reply_draft: $(\"Score and Route\").first().json.ai_reply_draft\n}) }}\n",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type  ",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2496,
+        0
+      ],
+      "id": "8a28949d-29d6-4345-bc7c-a4eacbbc04d7",
+      "name": "Respond Accepted"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Has Required Fields?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Required Fields?": {
+      "main": [
+        [
+          {
+            "node": "Derive IDs and SLA Seed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Missing Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Derive IDs and SLA Seed": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Exists?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Duplicate Does Not Exist?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Ticket Created Event": {
+      "main": [
+        [
+          {
+            "node": "Needs Immediate Escalation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Does Not Exist?": {
+      "main": [
+        [
+          {
+            "node": "AI Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Exists?": {
+      "main": [
+        [
+          {
+            "node": "Insert Duplicate Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Duplicate Event": {
+      "main": [
+        [
+          {
+            "node": "Respond Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Duplicate": {
+      "main": [
+        []
+      ]
+    },
+    "AI Triage": {
+      "main": [
+        [
+          {
+            "node": "Parse AI JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Triage",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI JSON": {
+      "main": [
+        [
+          {
+            "node": "Score and Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score and Route": {
+      "main": [
+        [
+          {
+            "node": "Insert Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Immediate Escalation?": {
+      "main": [
+        [
+          {
+            "node": "Insert Critical Escalation Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Critical Escalation Event": {
+      "main": [
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Ticket": {
+      "main": [
+        [
+          {
+            "node": "Insert Ticket Created Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "2YGvUkktjREfHLci",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "8c19b4ec-822c-4b48-b61c-f03fd2e83bdc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "56f66f4f9ba2983d4c9eac77e310c55b672ca6bed0b2093a042515039e543daf"
+  },
+  "id": "w1F5VRwCuQrM9QnW",
+  "tags": []
+}

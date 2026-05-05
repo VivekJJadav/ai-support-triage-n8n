@@ -1,0 +1,346 @@
+{
+  "name": "Daily Ops Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2695a699-4e7e-47dc-8af9-dd6c8a985bdd",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "kmaZ59tIZwlUHHJC",
+          "mode": "list",
+          "cachedResultName": "support_tickets",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/kmaZ59tIZwlUHHJC"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "submitted_at_epoch_ms",
+              "condition": "gte",
+              "keyValue": "={{ Date.now() - (24 * 60 * 60 * 1000) }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b73d7c8d-b3bd-4c0f-9889-57bcd2868fc3",
+      "name": "Get Last 24h Tickets"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(item => item.json);\n\nconst now = new Date();\nconst start = new Date(Date.now() - 24 * 60 * 60 * 1000);\n\nconst countBy = (field) => {\n  const counts = {};\n\n  for (const row of rows) {\n    const key = row[field] || 'unknown';\n    counts[key] = (counts[key] || 0) + 1;\n  }\n\n  return counts;\n};\n\nconst total = rows.length;\nconst criticalCount = rows.filter(r => r.urgency_label === 'critical').length;\nconst highPriorityCount = rows.filter(r => Number(r.priority_score || 0) >= 80).length;\n\nreturn [{\n  json: {\n    period_start_iso: start.toISOString(),\n    period_end_iso: now.toISOString(),\n    total_tickets: total,\n    critical_count: criticalCount,\n    high_priority_count: highPriorityCount,\n    by_category: countBy('category'),\n    by_queue: countBy('assigned_queue'),\n    by_sentiment: countBy('sentiment_label'),\n    created_at_iso: now.toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "2df19d3d-24e3-4160-b8a3-9478e6f7f596",
+      "name": "Aggregate Daily Metrics"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a support operations analyst.\n\nWrite a concise markdown digest for a support team lead.\n\nRules:\n- Maximum 140 words.\n- Do not invent details not present in the metrics.\n- Do not repeat the same metric in multiple sections.\n- Keep it practical and executive-friendly.\n- Mention exact counts from the metrics.\n\nUse this format exactly:\n\n# Daily Support Digest\n\n- Total tickets:\n- High priority tickets:\n- Main queues:\n- Sentiment mix:\n\n## Watch-outs\n- \n\n## Recommended focus today\n- \n\nMetrics:\n{{ JSON.stringify($json, null, 2) }}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        624,
+        0
+      ],
+      "id": "8dc65c12-d0ae-4d83-aac7-7f3ca7974bab",
+      "name": "Write Digest"
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:0.5b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        560,
+        208
+      ],
+      "id": "434b3f82-5d6a-4562-b373-eececac5dac2",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "DAhmXnKKg9XAA3Fe",
+          "name": "Ollama account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b89ff4ad-9830-4ae8-8223-6aad2768eaa8",
+              "name": "report_id",
+              "value": "=rpt_{{$now}}",
+              "type": "string"
+            },
+            {
+              "id": "ddeb6586-122f-40b5-a7bc-e7e045ccb892",
+              "name": "period_start_iso",
+              "value": "={{ $('Aggregate Daily Metrics').first().json.period_start_iso }}",
+              "type": "string"
+            },
+            {
+              "id": "13b8cce2-7459-449b-927a-5c32329059f6",
+              "name": "period_end_iso",
+              "value": "={{ $('Aggregate Daily Metrics').first().json.period_end_iso }}",
+              "type": "string"
+            },
+            {
+              "id": "05d0dd7d-ea54-4bae-bd90-e80711b79981",
+              "name": "total_tickets",
+              "value": "={{ $('Aggregate Daily Metrics').first().json.total_tickets }}",
+              "type": "number"
+            },
+            {
+              "id": "76d0ccac-2d6b-4d3d-a025-968ecebbdb0e",
+              "name": "critical_count",
+              "value": "={{ $('Aggregate Daily Metrics').first().json.critical_count }}",
+              "type": "number"
+            },
+            {
+              "id": "7d11a6fe-7840-4aa1-8059-46a079d2b9e3",
+              "name": "digest_markdown",
+              "value": "={{ $json.text ?? $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "83bf2710-ce8d-400e-87d8-42d06429d1af",
+              "name": "created_at_iso",
+              "value": "={{ $('Aggregate Daily Metrics').first().json.created_at_iso }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        0
+      ],
+      "id": "2b8e0357-a133-4377-b70b-7f2cee545adf",
+      "name": "Shape Digest Row"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "GLeLCmVW9XOru7I0",
+          "mode": "list",
+          "cachedResultName": "ops_reports",
+          "cachedResultUrl": "/projects/UClfZ6iStrDRN0CE/datatables/GLeLCmVW9XOru7I0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "report_id",
+              "displayName": "report_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "period_start_iso",
+              "displayName": "period_start_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "period_end_iso",
+              "displayName": "period_end_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "total_tickets",
+              "displayName": "total_tickets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "critical_count",
+              "displayName": "critical_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "digest_markdown",
+              "displayName": "digest_markdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "created_at_iso",
+              "displayName": "created_at_iso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "cbfe8d1c-08f0-48d0-85cc-c6a5294b64f3",
+      "name": "Insert Ops Report"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Last 24h Tickets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last 24h Tickets": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Daily Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Write Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write Digest",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Digest": {
+      "main": [
+        [
+          {
+            "node": "Shape Digest Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape Digest Row": {
+      "main": [
+        [
+          {
+            "node": "Insert Ops Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "2YGvUkktjREfHLci",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "ec480489-0f07-4f70-80e5-643a147d3e54",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "56f66f4f9ba2983d4c9eac77e310c55b672ca6bed0b2093a042515039e543daf"
+  },
+  "id": "rTOcpi2g3fimh1Zm",
+  "tags": []
+}
